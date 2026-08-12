@@ -1,0 +1,2 @@
+# astrbot_plugin_kook_manager
+astrbot插件，主要用来管理机器人在kook发的信息和表情包
