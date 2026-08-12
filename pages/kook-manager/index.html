@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KOOK 消息管理</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- 顶栏 -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-dot" aria-hidden="true"></span>
+          <h1 class="brand-title">KOOK 消息管理</h1>
+        </div>
+        <div class="topbar-right">
+          <span id="connStatus" class="conn-status" data-state="loading">
+            <span class="conn-dot"></span>
+            <span class="conn-text">连接中…</span>
+          </span>
+          <button id="themeToggle" class="icon-btn" type="button" title="切换主题" aria-label="切换主题">
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- 主区域 -->
+      <div class="main">
+        <!-- 左栏：服务器 / 频道 -->
+        <aside class="sidebar">
+          <div class="sidebar-head">
+            <span class="sidebar-title">频道</span>
+            <button id="refreshChannels" class="icon-btn small" type="button" title="刷新频道列表" aria-label="刷新频道列表">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+          </div>
+          <nav id="channelTree" class="channel-tree" aria-label="频道列表">
+            <div class="placeholder">正在加载频道…</div>
+          </nav>
+        </aside>
+
+        <!-- 右栏：消息 -->
+        <section class="chat">
+          <div class="chat-toolbar">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+              <input id="searchInput" type="text" placeholder="搜索消息、图片、表情…" autocomplete="off" />
+              <button id="clearSearch" class="clear-btn" type="button" aria-label="清空搜索" hidden>×</button>
+            </div>
+            <button id="imageOnlyToggle" class="chip-btn" type="button" aria-pressed="false">仅图片</button>
+            <div class="toolbar-spacer"></div>
+            <span class="channel-badge" id="currentChannelBadge" hidden></span>
+            <button id="autoscrollToggle" class="chip-btn active" type="button" aria-pressed="true" title="保持滚动到底部">自动滚动</button>
+          </div>
+
+          <div class="empty-state" id="emptyState" hidden>
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <p class="empty-title">还没有选择频道</p>
+            <p class="empty-sub">从左侧选择一个文字频道，查看机器人发送的消息</p>
+          </div>
+
+          <div class="empty-state" id="emptyMessages" hidden>
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+            </div>
+            <p class="empty-title">这个频道没有机器人消息</p>
+            <p class="empty-sub">机器人尚未在此频道发送过消息</p>
+          </div>
+
+          <div class="empty-state" id="noMatch" hidden>
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+            <p class="empty-title">没有匹配的消息</p>
+            <p class="empty-sub">换一个关键词，或关闭「仅图片」试试</p>
+          </div>
+
+          <div class="messages-wrap" id="messagesWrap">
+            <div class="load-more-row" id="loadMoreRow" hidden>
+              <button id="loadMoreBtn" class="load-more-btn" type="button">加载更早的消息</button>
+            </div>
+            <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 配置弹层 -->
+    <div class="modal-backdrop" id="configModal" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2 class="modal-title">KOOK 凭据</h2>
+          <button class="icon-btn" id="configClose" type="button" aria-label="关闭">×</button>
+        </div>
+        <p class="modal-desc">默认从 AstrBot KOOK 适配器自动读取 Token；如需覆盖，请填写机器人 Token。</p>
+        <label class="field">
+          <span class="field-label">机器人 Token（覆盖）</span>
+          <input id="configToken" type="password" placeholder="从 KOOK 开发者平台获取" autocomplete="off" />
+        </label>
+        <div class="field-hint" id="configSourceHint"></div>
+        <div class="modal-actions">
+          <button id="configClear" class="btn ghost" type="button">清除覆盖</button>
+          <button id="configSave" class="btn primary" type="button">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除确认弹层 -->
+    <div class="modal-backdrop" id="deleteModal" hidden>
+      <div class="modal small">
+        <div class="modal-head">
+          <h2 class="modal-title">删除消息</h2>
+          <button class="icon-btn" id="deleteCancel" type="button" aria-label="关闭">×</button>
+        </div>
+        <p class="modal-desc">确定撤回这条消息吗？操作后 KOOK 服务器上该消息将被删除。</p>
+        <div class="modal-actions">
+          <button id="deleteConfirm" class="btn danger" type="button">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
