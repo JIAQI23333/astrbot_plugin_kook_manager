@@ -55,3 +55,7 @@ KOOK 机器人消息管理插件，运行于 AstrBot WebUI。
 ## 依赖
 
 - `aiohttp>=3.8.0`
+
+## 更新日志
+
+各版本的变更记录见 [CHANGELOG.md](CHANGELOG.md)。
