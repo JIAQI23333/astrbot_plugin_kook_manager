@@ -1,7 +1,7 @@
 name: astrbot_plugin_kook_manager
 display_name: KOOK 消息管理
 author: JIAQI23333
-version: 0.1.1
+version: 0.1.2
 desc: |
   在 AstrBot WebUI 中管理 KOOK 机器人消息的管理面板。
 
