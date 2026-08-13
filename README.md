@@ -9,6 +9,7 @@ KOOK 机器人消息管理插件，运行于 AstrBot WebUI。
 - 查看频道内**机器人自己发送**的消息，按主流聊天软件样式排列，**最新消息在底部，打开自动滚动到底部**
 - 搜索 / 过滤消息：支持关键词搜索，支持「仅图片」过滤（含机器人发送的图片、表情、卡片图片等）
 - 一键删除（撤回）某条机器人消息
+- **多选批量删除**：勾选消息后支持「全选 / 清空选择」，一键批量撤回选中的机器人消息
 
 ## 安装
 
@@ -30,6 +31,7 @@ KOOK 机器人消息管理插件，运行于 AstrBot WebUI。
 
 - 左侧选择服务器下的文字频道，右侧加载该频道内机器人发送的消息。
 - 点击消息右侧的「删除」按钮撤回该消息（调用 KOOK `/api/v3/message/delete`，仅能删除机器人自己的消息）。
+- 点击消息左侧的复选框进行多选，工具栏「全选」可选中当前列表的全部消息（再次点击变为「清空选择」），「删除所选」可一键批量撤回勾选的消息。
 - 顶部搜索框按内容过滤；「仅图片」按钮筛选图片消息；「自动滚动」保持列表始终停留在最新消息。
 
 ## 技术说明
@@ -48,7 +50,7 @@ KOOK 机器人消息管理插件，运行于 AstrBot WebUI。
 | POST | `/astrbot_plugin_kook_manager/config/save` | 保存手动覆盖凭据 |
 | GET | `/astrbot_plugin_kook_manager/guilds` | 服务器与文字频道列表 |
 | GET | `/astrbot_plugin_kook_manager/messages` | 频道内机器人消息（分页） |
-| POST | `/astrbot_plugin_kook_manager/messages/delete` | 删除某条消息 |
+| POST | `/astrbot_plugin_kook_manager/messages/delete` | 删除（撤回）消息，支持单条 `msg_id` 或批量 `msg_ids` |
 
 ## 依赖
 

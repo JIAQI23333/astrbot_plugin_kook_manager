@@ -466,17 +466,47 @@ class KookManagerPlugin(Star):
         if not token:
             return error_response("未找到 KOOK 机器人 Token。")
         payload = await request.json(default={})
+        if not isinstance(payload, dict):
+            return error_response("请求体必须是 JSON 对象")
+
+        # 兼容单条 msg_id 与批量 msg_ids 两种写法
+        msg_ids = payload.get("msg_ids") or []
+        if isinstance(msg_ids, str):
+            msg_ids = [msg_ids]
+        elif not isinstance(msg_ids, list):
+            msg_ids = []
         msg_id = (payload.get("msg_id") or "").strip()
-        if not msg_id:
+        if msg_id and msg_id not in msg_ids:
+            msg_ids.insert(0, msg_id)
+
+        cleaned: list[str] = []
+        for mid in msg_ids:
+            if isinstance(mid, str) and mid.strip() and mid.strip() not in cleaned:
+                cleaned.append(mid.strip())
+        if not cleaned:
             return error_response("缺少 msg_id 参数。")
-        try:
-            await self._request(
-                "POST", KOOK_ENDPOINTS["message_delete"], token,
-                json_body={"msg_id": msg_id},
-            )
-            return json_response({"ok": True})
-        except Exception as e:
-            return error_response(f"删除消息失败: {e}")
+
+        deleted = 0
+        failed: list[dict] = []
+        for mid in cleaned:
+            try:
+                await self._request(
+                    "POST", KOOK_ENDPOINTS["message_delete"], token,
+                    json_body={"msg_id": mid},
+                )
+                deleted += 1
+            except Exception as e:
+                failed.append({"id": mid, "error": str(e)})
+
+        if deleted == 0 and failed:
+            return error_response(f"删除消息失败: {failed[0]['error']}")
+        return json_response(
+            {
+                "ok": True,
+                "deleted": deleted,
+                "failed": failed,
+            }
+        )
 
     # ------------------------------------------------------------------ #
     # 生命周期

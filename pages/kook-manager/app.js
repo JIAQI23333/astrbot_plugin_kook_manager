@@ -16,6 +16,8 @@ const els = {
   clearSearch: $("#clearSearch"),
   imageOnlyToggle: $("#imageOnlyToggle"),
   autoscrollToggle: $("#autoscrollToggle"),
+  selectAllToggle: $("#selectAllToggle"),
+  deleteSelectedBtn: $("#deleteSelectedBtn"),
   currentChannelBadge: $("#currentChannelBadge"),
   emptyState: $("#emptyState"),
   emptyMessages: $("#emptyMessages"),
@@ -32,6 +34,7 @@ const els = {
   configSave: $("#configSave"),
   deleteModal: $("#deleteModal"),
   deleteCancel: $("#deleteCancel"),
+  deleteModalDesc: $("#deleteModalDesc"),
   deleteConfirm: $("#deleteConfirm"),
   toast: $("#toast"),
 };
@@ -52,7 +55,8 @@ const state = {
   loadingChannels: false,
   loadingMessages: false,
   deleting: false,
-  pendingDeleteId: "",
+  pendingDeleteIds: [],
+  selectedIds: new Set(),
 };
 
 // ---- 工具 ----
@@ -271,6 +275,7 @@ function selectChannel(channelId, channelName) {
   state.messages = [];
   state.hasMore = false;
   state.oldestMsgId = "";
+  state.selectedIds.clear();
 
   els.currentChannelBadge.hidden = false;
   els.currentChannelBadge.textContent = `# ${channelName}`;
@@ -278,6 +283,7 @@ function selectChannel(channelId, channelName) {
 
   highlightActiveChannel();
   updateEmptyStates();
+  updateSelectionUI();
 
   els.messageList.innerHTML = "";
   loadMessages();
@@ -320,9 +326,13 @@ function msgHtml(msg, index) {
   const segs = (msg.segments || []).map(segmentHtml).join("");
   const time = fmtTime(msg.create_at);
   const initial = (msg.author || "机")[0];
+  const checked = state.selectedIds.has(msg.id);
 
   return `
-    <div class="msg" data-id="${esc(msg.id)}" data-index="${index}">
+    <div class="msg${checked ? " selected" : ""}" data-id="${esc(msg.id)}" data-index="${index}">
+      <label class="msg-select" title="选择消息">
+        <input type="checkbox" class="msg-checkbox" data-check="${esc(msg.id)}" ${checked ? "checked" : ""} aria-label="选择消息" />
+      </label>
       <div class="msg-avatar">${esc(initial)}</div>
       <div class="msg-body">
         <div class="msg-meta">
@@ -393,10 +403,26 @@ function renderMessages() {
   // 删除按钮事件
   wrap.querySelectorAll(".delete-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.pendingDeleteId = btn.dataset.delete;
-      els.deleteModal.hidden = false;
+      openDeleteConfirm([btn.dataset.delete]);
     });
   });
+
+  // 多选复选框
+  wrap.querySelectorAll(".msg-checkbox").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const id = cb.dataset.check;
+      if (cb.checked) {
+        state.selectedIds.add(id);
+      } else {
+        state.selectedIds.delete(id);
+      }
+      const row = cb.closest(".msg");
+      if (row) row.classList.toggle("selected", cb.checked);
+      updateSelectionUI();
+    });
+  });
+
+  updateSelectionUI();
 }
 
 function updateEmptyStates() {
@@ -408,6 +434,17 @@ function updateEmptyStates() {
   els.emptyState.hidden = Boolean(state.currentChannelId);
   els.emptyMessages.hidden = hasAny || !state.currentChannelId;
   els.noMatch.hidden = !(hasAny && !filtered);
+  updateSelectionUI();
+}
+
+// ---- 多选 ----
+function updateSelectionUI() {
+  const selectedCount = state.selectedIds.size;
+  const selectable = state.messages.filter(matchesFilter).length;
+  els.selectAllToggle.disabled = !state.currentChannelId || selectable === 0;
+  els.selectAllToggle.textContent = selectedCount ? `清空选择 (${selectedCount})` : "全选";
+  els.deleteSelectedBtn.disabled = selectedCount === 0;
+  els.deleteSelectedBtn.textContent = selectedCount ? `删除所选 (${selectedCount})` : "删除所选";
 }
 
 // ---- 滚动 ----
@@ -424,19 +461,35 @@ function isNearBottom() {
 }
 
 // ---- 删除 ----
-async function deleteMessage(msgId) {
-  if (state.deleting) return;
+function openDeleteConfirm(ids) {
+  state.pendingDeleteIds = ids || [];
+  els.deleteModalDesc.textContent =
+    ids.length > 1
+      ? `确定撤回选中的 ${ids.length} 条消息吗？操作后 KOOK 服务器上这些消息将被删除。`
+      : "确定撤回这条消息吗？操作后 KOOK 服务器上该消息将被删除。";
+  els.deleteModal.hidden = false;
+}
+
+async function deleteMessages(ids) {
+  if (!ids || !ids.length || state.deleting) return;
   state.deleting = true;
   els.deleteConfirm.disabled = true;
   try {
-    const res = await bridge.apiPost("messages/delete", { msg_id: msgId });
+    const res = await bridge.apiPost("messages/delete", { msg_ids: ids });
     if (!res || !res.ok) {
       toast((res && res.message) || "删除失败", "error");
       return;
     }
-    state.messages = state.messages.filter((m) => m.id !== msgId);
+    const failedIds = new Set((res.failed || []).map((f) => f.id));
+    state.messages = state.messages.filter((m) => !ids.includes(m.id) || failedIds.has(m.id));
+    state.selectedIds = new Set([...state.selectedIds].filter((id) => failedIds.has(id)));
     renderMessages();
-    toast("消息已删除", "ok");
+    const failedCount = (res.failed || []).length;
+    if (failedCount > 0) {
+      toast(`已删除 ${ids.length - failedCount} 条，失败 ${failedCount} 条`, "error");
+    } else {
+      toast(`已删除 ${ids.length} 条消息`, "ok");
+    }
   } catch (e) {
     toast("删除失败：" + e.message, "error");
   } finally {
@@ -525,6 +578,20 @@ els.imageOnlyToggle.addEventListener("click", () => {
   scrollToBottom();
 });
 
+els.selectAllToggle.addEventListener("click", () => {
+  if (state.selectedIds.size > 0) {
+    state.selectedIds.clear();
+  } else {
+    state.messages.filter(matchesFilter).forEach((m) => state.selectedIds.add(m.id));
+  }
+  renderMessages();
+});
+
+els.deleteSelectedBtn.addEventListener("click", () => {
+  const ids = [...state.selectedIds];
+  if (ids.length) openDeleteConfirm(ids);
+});
+
 els.autoscrollToggle.addEventListener("click", () => {
   state.autoscroll = !state.autoscroll;
   els.autoscrollToggle.classList.toggle("active", state.autoscroll);
@@ -564,7 +631,7 @@ els.connStatus.addEventListener("click", openConfig);
 // 删除弹层
 els.deleteCancel.addEventListener("click", () => (els.deleteModal.hidden = true));
 els.deleteConfirm.addEventListener("click", () => {
-  if (state.pendingDeleteId) deleteMessage(state.pendingDeleteId);
+  if (state.pendingDeleteIds.length) deleteMessages(state.pendingDeleteIds);
 });
 els.deleteModal.addEventListener("click", (e) => {
   if (e.target === els.deleteModal) els.deleteModal.hidden = true;

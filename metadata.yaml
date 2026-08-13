@@ -1,9 +1,9 @@
 name: astrbot_plugin_kook_manager
 display_name: KOOK 消息管理
 author: JIAQI23333
-version: 0.1.0
-description: 在 AstrBot WebUI 中管理 KOOK 机器人：查看已加入的文字频道与机器人消息，支持搜索过滤与一键删除消息。
+version: 0.1.1
+description: 在 AstrBot WebUI 中管理 KOOK 机器人：查看已加入的文字频道与机器人消息，支持搜索过滤、多选与一键批量删除消息。
 short_desc: KOOK 机器人消息管理面板
-repo: https://github.com/guo/astrbot_plugin_kook_manager
+repo: https://github.com/JIAQI23333/astrbot_plugin_kook_manager
 support_platforms:
   - kook

@@ -480,6 +480,24 @@ body {
   font-weight: 600;
 }
 
+.chip-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.batch-delete-btn:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.batch-delete-btn:not(:disabled):hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
 .toolbar-spacer {
   flex: 1;
 }
@@ -597,6 +615,36 @@ body {
 
 .msg:hover {
   background: var(--bg-subtle);
+}
+
+.msg.selected {
+  background: var(--brand-soft);
+}
+
+.msg-select {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 11px 0 0;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s;
+}
+
+.msg:hover .msg-select,
+.msg.selected .msg-select {
+  opacity: 1;
+}
+
+.msg-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
 }
 
 .msg-avatar {
